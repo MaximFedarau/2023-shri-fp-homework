@@ -1,4 +1,5 @@
-import { prop, equals, compose, allPass, values, props, gte, flip, curry, countBy, identity, length, keys, map, dissoc, complement, apply } from "ramda"
+import { prop, equals, compose, allPass, values, props, gte, flip, curry, countBy, identity, length, keys, map, dissoc, complement } from "ramda";
+import { max } from "lodash";
 /**
  * @file Домашка по FP ч. 1
  *
@@ -15,11 +16,11 @@ import { prop, equals, compose, allPass, values, props, gte, flip, curry, countB
  */
 
 // figures
-const getStar = prop('star');
-const getSquare = prop('square');
-const getTriangle = prop('triangle');
-const getCircle = prop('circle');
-const getSquareAndTriangle = props(['square', 'triangle']);
+const getStar = prop("star");
+const getSquare = prop("square");
+const getTriangle = prop("triangle");
+const getCircle = prop("circle");
+const getSquareAndTriangle = props(["square", "triangle"]);
 
 // colors
 const isWhite = equals("white");
@@ -56,30 +57,35 @@ const isOrangeCircle = compose(isOrange, getCircle);
 
 // comparison methods
 const flippedGte = flip(gte);
-const greaterOrEqualsTwo = curry(flippedGte)(2);
-const greaterOrEqualsThree = curry(flippedGte)(3);
+const greaterThan = curry(flippedGte);
+const greaterThanOrEqualToTwo = greaterThan(2);
+const greaterThanOrEqualToThree = greaterThan(3);
+const isOne = equals(1);
+const isTwo = equals(2);
 
 // array methods
 const convertUndefinedToZero = (el) => el ?? 0;
+const countByArrayItem = (arr) => countBy(identity)(arr);
 const convertArrayUndefinedElementsToZero = map(convertUndefinedToZero);
-const areAllArrayItemsIdentical = compose(equals(1), length, keys, countBy(identity));
+const areAllArrayItemsIdentical = compose(isOne, length, keys, countByArrayItem);
 const areSquareAndTriangleColorsIdentical = compose(areAllArrayItemsIdentical, getSquareAndTriangle);
-const getArrayMaxElement = apply(Math.max);
 
 // complex color methods
-const getColorsQuantities = compose(countBy(identity), values);
+const removeWhiteColor = dissoc("white");
+const getColorsQuantities = compose(countByArrayItem, values);
 const getGreenColorQuantity = compose(getGreen, getColorsQuantities);
-const getNonWhiteColorsQuantities = compose(convertArrayUndefinedElementsToZero, values, dissoc('white'), getColorsQuantities);
+const getRedColorQuantity = compose(getRed, getColorsQuantities);
+const getNonWhiteColorsQuantities = compose(convertArrayUndefinedElementsToZero, values, removeWhiteColor, getColorsQuantities);
 
 // complex figure methods
-const areTwoGreenFigures = compose(equals(2), getGreenColorQuantity);
-const isOneRedFigure = compose(equals(1), getRed, getColorsQuantities);
+const areTwoGreenFigures = compose(isTwo, getGreenColorQuantity);
+const isOneRedFigure = compose(isOne, getRedColorQuantity);
 
 // 1. Красная звезда, зеленый квадрат, все остальные белые.
 export const validateFieldN1 = allPass([isRedStar, isGreenSquare, isWhiteCircle, isWhiteTriangle]);
 
 // 2. Как минимум две фигуры зеленые.
-export const validateFieldN2 = compose(greaterOrEqualsTwo, getGreenColorQuantity);
+export const validateFieldN2 = compose(greaterThanOrEqualToTwo, getGreenColorQuantity);
 
 // 3. Количество красных фигур равно кол-ву синих.
 export const validateFieldN3 = compose(areAllArrayItemsIdentical, getRedAndBlue, getColorsQuantities);
@@ -88,10 +94,10 @@ export const validateFieldN3 = compose(areAllArrayItemsIdentical, getRedAndBlue,
 export const validateFieldN4 = allPass([isBlueCircle, isRedStar, isOrangeSquare]);
 
 // 5. Три фигуры одного любого цвета кроме белого (четыре фигуры одного цвета – это тоже true).
-export const validateFieldN5 = compose(greaterOrEqualsThree, getArrayMaxElement, getNonWhiteColorsQuantities);
+export const validateFieldN5 = compose(greaterThanOrEqualToThree, max, getNonWhiteColorsQuantities);
 
 // 6. Ровно две зеленые фигуры (одна из зелёных – это треугольник), плюс одна красная. Четвёртая оставшаяся любого доступного цвета, но не нарушающая первые два условия
-export const validateFieldN6 = allPass([isOneRedFigure, areTwoGreenFigures, isGreenTriangle])
+export const validateFieldN6 = allPass([isOneRedFigure, areTwoGreenFigures, isGreenTriangle]);
 
 // 7. Все фигуры оранжевые.
 export const validateFieldN7 = allPass([isOrangeCircle, isOrangeSquare, isOrangeStar, isOrangeTriangle]);
@@ -100,7 +106,7 @@ export const validateFieldN7 = allPass([isOrangeCircle, isOrangeSquare, isOrange
 export const validateFieldN8 = allPass([isNotRedStar, isNotWhiteStar]);
 
 // 9. Все фигуры зеленые.
-export const validateFieldN9 = allPass([isGreenCircle, isGreenSquare, isGreenStar, isGreenTriangle])
+export const validateFieldN9 = allPass([isGreenCircle, isGreenSquare, isGreenStar, isGreenTriangle]);
 
 // 10. Треугольник и квадрат одного цвета (не белого), остальные – любого цвета
-export const validateFieldN10 = allPass([isNotWhiteSquare, isNotWhiteTriangle, areSquareAndTriangleColorsIdentical])
+export const validateFieldN10 = allPass([isNotWhiteSquare, isNotWhiteTriangle, areSquareAndTriangleColorsIdentical]);
