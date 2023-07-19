@@ -14,38 +14,82 @@
  * Иногда промисы от API будут приходить в состояние rejected, (прямо как и API в реальной жизни)
  * Ответ будет приходить в поле {result}
  */
- import Api from '../tools/api';
+import { tap, compose, gt, lt, flip, curry, length, allPass, ifElse, partial, andThen, prop, otherwise, modulo, concat } from "ramda";
+import { toNumber, toString } from "lodash";
 
- const api = new Api();
+import Api from '../tools/api';
 
- /**
-  * Я – пример, удали меня
-  */
- const wait = time => new Promise(resolve => {
-     setTimeout(resolve, time);
- })
+const api = new Api();
 
- const processSequence = ({value, writeLog, handleSuccess, handleError}) => {
-     /**
-      * Я – пример, удали меня
-      */
-     writeLog(value);
+// comparison methods
+const flippedGt = flip(gt);
+const flippedLt = flip(lt);
+const greaterThanTwo = curry(flippedGt)(2);
+const isPositive = curry(flippedGt)(0);
+const lessThanTen = curry(flippedLt)(10); 
 
-     api.get('https://api.tech/numbers/base', {from: 2, to: 10, number: '01011010101'}).then(({result}) => {
-         writeLog(result);
-     });
+// validation
+const isLengthGreaterThanTwo = compose(greaterThanTwo, length);
+const isLengthLessThanTen = compose(lessThanTen, length);
+const isRequiredNumber = compose(isPositive, toNumber);
+const validate = allPass([isLengthLessThanTen, isLengthGreaterThanTwo, isRequiredNumber]);
 
-     wait(2500).then(() => {
-         writeLog('SecondLog')
+// process
+// api methods
+const flippedAPI = flip(api.get);
+const emptyParamsAPI = flippedAPI({});
+const numberAPI = api.get("https://api.tech/numbers/base");
+const getResult = prop("result");
+const thenableGetResult = andThen(getResult);
 
-         return wait(1500);
-     }).then(() => {
-         writeLog('ThirdLog');
+// convert decimal to binary
+const createDecimalToBinaryAPIParams = (number) => ({from: 10, to: 2, number});
+const convertDecimalToBinary = compose(numberAPI, createDecimalToBinaryAPIParams);
+const convertDecimalToBinaryResult = compose(thenableGetResult, convertDecimalToBinary)
 
-         return wait(400);
-     }).then(() => {
-         handleSuccess('Done');
-     });
- }
+// math operations
+const convertToNumberAndRound = compose(Math.round, toNumber);
+
+const getLength = compose(length, toString);
+const thenableGetLength = andThen(getLength);
+
+const exponentiate = (exponent, base) => Math.pow(base, exponent);
+const square = curry(exponentiate)(2);
+const thenableSquare = andThen(square);
+
+const flippedModulo = flip(modulo);
+const getRemainder = curry(flippedModulo);
+const getRemainderOfDivisionByThree = getRemainder(3);
+const getStringRemainderOfDivisionByThree = compose(toString, getRemainderOfDivisionByThree)
+const thenableGetStringRemainderOfDivisionByThree = andThen(getStringRemainderOfDivisionByThree);
+
+// get animal
+const getAnimal = compose(emptyParamsAPI, concat("https://animals.tech/"));
+const getAnimalResult = compose(thenableGetResult, getAnimal);
+const thenableGetAnimalResult = andThen(getAnimalResult)
+
+const processSequence = ({value, writeLog, handleSuccess, handleError}) => {
+    const log = tap(writeLog);
+    const logAPI = andThen(log);
+
+    const throwValidationError = partial(handleError, ['ValidationError']);
+    const onAPIError = otherwise(handleError);
+    
+    const onAPISuccess = andThen(handleSuccess);
+
+    const logMethod = (method, thenable = false) => compose(thenable ? logAPI : log, method);
+
+    const logConvertToNumberAndRound = logMethod(convertToNumberAndRound);
+    const logConvertDecimalToBinaryResult = logMethod(convertDecimalToBinaryResult, true);
+    const logGetLength = logMethod(thenableGetLength, true);
+    const logSquare = logMethod(thenableSquare, true);
+    const logGetStringRemainderOfDivisionByThree = logMethod(thenableGetStringRemainderOfDivisionByThree, true);
+
+    const process = compose(onAPIError, onAPISuccess, thenableGetAnimalResult, logGetStringRemainderOfDivisionByThree, logSquare, logGetLength, logConvertDecimalToBinaryResult, logConvertToNumberAndRound);
+    const condition = ifElse(validate, process, throwValidationError);
+    const main = compose(condition, log);
+
+    main(value);
+}
 
 export default processSequence;
